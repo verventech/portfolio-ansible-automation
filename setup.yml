@@ -17,11 +17,13 @@
           - php
           - libapache2-mod-php
           - php-pgsql
-          - python3-psycopg2 # Required by Ansible for PostgreSQL modules
-          - acl              # Required for become_user: postgres
+          - python3-psycopg2
+          - acl
         state: present
         update_cache: yes
 
+    # Note: If you are still running this inside WSL or Docker, 
+    # replace this block with the shell workaround we discussed earlier.
     - name: Ensure apache2 and psql are running and enabled
       ansible.builtin.service:
         name: "{{ item }}"
@@ -57,6 +59,7 @@
             duration VARCHAR(100) NOT NULL
           );
           ALTER TABLE education OWNER TO "{{ db_user }}";
+          ALTER SEQUENCE education_id_seq OWNER TO "{{ db_user }}";
 
     - name: Insert initial education data (Idempotent)
       become_user: postgres
@@ -68,7 +71,6 @@
           WHERE NOT EXISTS (
             SELECT 1 FROM education WHERE institution = 'Your University Name'
           );
-
 
     - name: Set Apache env vars
       ansible.builtin.blockinfile:
