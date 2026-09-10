@@ -6,7 +6,7 @@
     db_name: "portfolio_db"
     db_user: "musharaf"
     db_pass: "musharaf_secure_pass_123"
-  
+
   tasks:
     - name: Install required packages
       ansible.builtin.apt:
@@ -23,13 +23,13 @@
         update_cache: yes
 
     - name: Ensure apache2 and psql are running and enabled
-      ansible.builtin.service: 
-        name: {{ item }}
+      ansible.builtin.service:
+        name: "{{ item }}"
         state: started
         enabled: yes
       loop:
-         - apache2
-         - postgresql
+        - apache2
+        - postgresql
 
     - name: Create PSQL User
       become_user: postgres
@@ -53,7 +53,11 @@
 
     - name: Initialize database - making it idempotent
       become_user: postgres
-      ansible.builtin.shell: psql -d {{ db_name }} -f /tmp/init.sql
+      ansible.builtin.shell: |
+        psql -d "{{ db_name }}" -f /tmp/init.sql
+        touch /tmp/.portfolio_db_initialized
+      args:
+        creates: /tmp/.portfolio_db_initialized
       register: psql_result
 
     - name: Set Apache env vars
@@ -63,12 +67,12 @@
         block: |
           export PGHOST="localhost"
           export PGDATABASE="{{ db_name }}"
-          export PGUSER="{{ db_user}} "
+          export PGUSER="{{ db_user }}"
           export PGPASSWORD="{{ db_pass }}"
           export PGPORT="5432"
-        notify: Restart Apache
+      notify: Restart Apache
     
-    - name: remove old index.html
+    - name: Remove old index.html
       ansible.builtin.file:
         path: /var/www/html/index.html
         state: absent
