@@ -1,3 +1,5 @@
+\c portfolio_db
+SET ROLE musharaf;
 CREATE TABLE IF NOT EXISTS education (
     id SERIAL PRIMARY KEY,
     course_name VARCHAR(255) NOT NULL,
