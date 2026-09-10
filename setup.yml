@@ -1,6 +1,6 @@
 ---
 - name: Setup Portfolio Automation using Ansible
-  hosts: localhost
+  hosts: studentvms
   become: yes
   vars:
     db_name: "portfolio_db"
@@ -73,7 +73,7 @@
           WHERE NOT EXISTS (
             SELECT 1 FROM education WHERE course_name = 'BSc Computer Science'
           );
-          
+
     - name: Set Apache env vars
       ansible.builtin.blockinfile:
         path: /etc/apache2/envvars
