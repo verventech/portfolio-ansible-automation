@@ -45,28 +45,29 @@
         owner: "{{ db_user }}"
         state: present
 
-    - name: Copy init.sql from ansible-server to host
-      ansible.builtin.copy:
-        src: files/init.sql
-        dest: /tmp/init.sql
-        mode: '0644'
-
-    - name: Initialize database - making it idempotent
+    - name: Create education table using Ansible
       become_user: postgres
-      ansible.builtin.shell: |
-        psql -d "{{ db_name }}" -f /tmp/init.sql
-        touch /tmp/.portfolio_db_initialized
-      args:
-        creates: /tmp/.portfolio_db_initialized
-      register: psql_result
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS education (
+            id SERIAL PRIMARY KEY,
+            institution VARCHAR(255) NOT NULL,
+            degree VARCHAR(255) NOT NULL,
+            duration VARCHAR(100) NOT NULL
+          );
+          ALTER TABLE education OWNER TO "{{ db_user }}";
 
-      
-    - name: Grant table and sequence permissions to app user
+    - name: Insert initial education data (Idempotent)
       become_user: postgres
-      ansible.builtin.shell: |
-        psql -d "{{ db_name }}" -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ db_user }};"
-        psql -d "{{ db_name }}" -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ db_user }};"
-      changed_when: false
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        query: |
+          INSERT INTO education (institution, degree, duration)
+          SELECT 'Your University Name', 'BSc Computer Science', '2018 - 2022'
+          WHERE NOT EXISTS (
+            SELECT 1 FROM education WHERE institution = 'Your University Name'
+          );
 
 
     - name: Set Apache env vars
