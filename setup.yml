@@ -60,6 +60,15 @@
         creates: /tmp/.portfolio_db_initialized
       register: psql_result
 
+      
+    - name: Grant table and sequence permissions to app user
+      become_user: postgres
+      ansible.builtin.shell: |
+        psql -d "{{ db_name }}" -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ db_user }};"
+        psql -d "{{ db_name }}" -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ db_user }};"
+      changed_when: false
+
+
     - name: Set Apache env vars
       ansible.builtin.blockinfile:
         path: /etc/apache2/envvars
