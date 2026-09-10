@@ -61,7 +61,7 @@
           ALTER TABLE education OWNER TO "{{ db_user }}";
           ALTER SEQUENCE education_id_seq OWNER TO "{{ db_user }}";
 
-    - name: Insert initial education data (Idempotent)
+    - name: Insert initial education data (Idempotent..)
       become_user: postgres
       community.postgresql.postgresql_query:
         db: "{{ db_name }}"
