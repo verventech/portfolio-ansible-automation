@@ -47,31 +47,33 @@
         owner: "{{ db_user }}"
         state: present
 
-    - name: Create education table using Ansible
+    - name: Recreate education table with correct schema
       become_user: postgres
       community.postgresql.postgresql_query:
         db: "{{ db_name }}"
         query: |
-          CREATE TABLE IF NOT EXISTS education (
+          DROP TABLE IF EXISTS education CASCADE;
+          CREATE TABLE education (
             id SERIAL PRIMARY KEY,
-            institution VARCHAR(255) NOT NULL,
-            degree VARCHAR(255) NOT NULL,
-            duration VARCHAR(100) NOT NULL
+            course_name VARCHAR(255) NOT NULL,
+            session VARCHAR(100) NOT NULL,
+            cgpa VARCHAR(50) NOT NULL,
+            institute VARCHAR(255) NOT NULL
           );
           ALTER TABLE education OWNER TO "{{ db_user }}";
           ALTER SEQUENCE education_id_seq OWNER TO "{{ db_user }}";
 
-    - name: Insert initial education data (Idempotent..)
+    - name: Insert initial education data
       become_user: postgres
       community.postgresql.postgresql_query:
         db: "{{ db_name }}"
         query: |
-          INSERT INTO education (institution, degree, duration)
-          SELECT 'Your University Name', 'BSc Computer Science', '2018 - 2022'
+          INSERT INTO education (course_name, session, cgpa, institute)
+          SELECT 'BSc Computer Science', '2018 - 2022', '3.8', 'Your University Name'
           WHERE NOT EXISTS (
-            SELECT 1 FROM education WHERE institution = 'Your University Name'
+            SELECT 1 FROM education WHERE course_name = 'BSc Computer Science'
           );
-
+          
     - name: Set Apache env vars
       ansible.builtin.blockinfile:
         path: /etc/apache2/envvars
