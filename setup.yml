@@ -1,0 +1,89 @@
+---
+- name: Setup Portfolio Automation using Ansible
+  hosts: localhost
+  become: yes
+  vars:
+    db_name: "portfolio_db"
+    db_user: "musharaf"
+    db_pass: "musharaf_secure_pass_123"
+  
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        pkg:
+          - apache2
+          - postgresql
+          - postgresql-contrib
+          - php
+          - libapache2-mod-php
+          - php-pgsql
+          - python3-psycopg2 # Required by Ansible for PostgreSQL modules
+          - acl              # Required for become_user: postgres
+        state: present
+        update_cache: yes
+
+    - name: Ensure apache2 and psql are running and enabled
+      ansible.builtin.service: 
+        name: {{ item }}
+        state: started
+        enabled: yes
+      loop:
+         - apache2
+         - postgresql
+
+    - name: Create PSQL User
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        state: present
+
+    - name: Create a database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ db_name }}"
+        owner: "{{ db_user }}"
+        state: present
+
+    - name: Copy init.sql from ansible-server to host
+      ansible.builtin.copy:
+        src: files/init.sql
+        dest: /tmp/init.sql
+        mode: '0644'
+
+    - name: Initialize database - making it idempotent
+      become_user: postgres
+      ansible.builtin.shell: psql -d {{ db_name }} -f /tmp/init.sql
+      register: psql_result
+
+    - name: Set Apache env vars
+      ansible.builtin.blockinfile:
+        path: /etc/apache2/envvars
+        marker: "# {mark} ANSIBLE MANAGED PORTFOLIO ENV VARS"
+        block: |
+          export PGHOST="localhost"
+          export PGDATABASE="{{ db_name }}"
+          export PGUSER="{{ db_user}} "
+          export PGPASSWORD="{{ db_pass }}"
+          export PGPORT="5432"
+        notify: Restart Apache
+    
+    - name: remove old index.html
+      ansible.builtin.file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: Copy new index.php
+      ansible.builtin.copy:
+        src: files/index.php
+        dest: /var/www/html/index.php
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      notify: Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
