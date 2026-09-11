@@ -1,0 +1,58 @@
+---
+- name: Teardown Portfolio Automation using Ansible
+  hosts: studentvms
+  become: yes
+  vars:
+    db_name: "portfolio_db"
+    db_user: "musharaf"
+
+  tasks:
+    - name: Remove portfolio index.php
+      ansible.builtin.file:
+        path: /var/www/html/index.php
+        state: absent
+
+    - name: Remove Apache env vars block
+      ansible.builtin.blockinfile:
+        path: /etc/apache2/envvars
+        marker: "# {mark} ANSIBLE MANAGED PORTFOLIO ENV VARS"
+        state: absent
+
+    - name: Drop the portfolio database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ db_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Drop the PSQL User
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ db_user }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Stop and disable services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - apache2
+        - postgresql
+      ignore_errors: yes
+
+    - name: Remove and purge all installed packages
+      ansible.builtin.apt:
+        pkg:
+          - apache2
+          - postgresql
+          - postgresql-contrib
+          - php
+          - libapache2-mod-php
+          - php-pgsql
+          - python3-psycopg2
+          - acl
+        state: absent
+        purge: yes
+        autoremove: yes
