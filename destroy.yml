@@ -1,6 +1,6 @@
 ---
 - name: Teardown Portfolio Automation using Ansible
-  hosts: studentvms
+  hosts: all
   become: yes
   vars:
     db_name: "portfolio_db"
